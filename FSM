@@ -20,19 +20,21 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-module fsm_template(reset_n, go, clk, we, start, up, clr, prime); 
-    input  reset_n, go, prime, clk; 
-    output reg we, start, up, clr;
+module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime); 
+    input  reset_n, go, prime, done, clk, rco,; 
+    output reg we, start, up, upb, clr;
      
     //- next state & present state variables
     reg [1:0] NS, PS; 
 
     //- bit-level state representations
-    // st_A: START 
-    // st_B: COMP
-    // st_C: PRIME
-    // st_D: LOAD
-    parameter [1:0] st_A=2'b00, st_B=2'b01, st_C=2'b10, st_D=2'b11;
+    // st_A: INIT 
+    // st_B: DOIT
+    // st_C: WAIT
+    // st_D: PRIME
+    // st_E: NPRIME
+
+    parameter [1:0] st_A=3'b000, st_B=3'b001, st_C=3'b010, st_D=3'b011, st_E=3'b100;
     
 
     //- model the state registers
@@ -44,55 +46,66 @@ module fsm_template(reset_n, go, clk, we, start, up, clr, prime);
     
     
     //- model the next-state and output decoders
-    always @ (go,PS)
+    always @ (*)
     begin
-       we = 0; start = 0; up = 0; clr = 0; // assign all outputs
+       we = 0; start = 0; up = 0; upb = 0; clr = 0; // assign all outputs to avoid latches
        case(PS)
-          st_A:
+          st_A:   // INIT
           begin
             // Moore Outputs
-             we = 0; up = 0;  clr = 1;      
+             we = 0; up = 0; upb = 0; start = 0;      
             // State Transition
-             if (go == 1) begin 
+             if ((go == 1) && (clr == 1)) begin 
                 NS = st_A; 
              end else begin
                 NS = st_B; 
              end  
           end
           
-          st_B:
+          st_B:   // DOIT
              begin
                 // Moore Outputs
-                we = 0; up = 1;  clr = 0; 
+                we = 0; up = 0; upb = 0; start = 1; 
                 // State Transition    
                 NS = st_C;
              end   
              
-          st_C:
+          st_C:   // WAIT
              begin
                  // Moore Outputs
-                 we = 0; up = 1;  clr = 0; 
+                 we = 0; up = 0; upb = 0; start = 0;  
                  // State Transition  
-                 if (prime == 1) begin
-                    NS = st_B; 
-                 end else begin
+                 if ((done == 1) && (prime == 1)) begin
                     NS = st_D; 
+                 end else if ((done == 1) && (prime == 0)) begin
+                    NS = st_E
+                 end else begin
+                    NS = st_C; 
                  end  
              end
              
-         st_D:
+         st_D:    // PRIME
             begin
-               we = 1; up = 0;  clr = 0; 
-               if (x_in == 1)
-               begin
-                  mealy = 1; 
-                  NS = st_B; 
-               end  
-               else
-               begin
-                  mealy = 0; 
-                  NS = st_A; 
-               end  
+                 // Moore Outputs
+                 we = 1; up = 1; upb = 1; start = 0;  
+                 // State Transition
+                 if (RCO == 1) begin 
+                   NS = st_A; 
+                 end else begin
+                   NS = st_B; 
+                 end  
+            end
+
+         st_E:    // NPRIME
+            begin
+                 // Moore Outputs
+                 we = 0; up = 1; upb = 0; start = 0;  
+                 // State Transition
+                 if (RCO == 1) begin 
+                   NS = st_A; 
+                 end else begin
+                   NS = st_B; 
+                 end  
             end
              
              
@@ -100,5 +113,3 @@ module fsm_template(reset_n, go, clk, we, start, up, clr, prime);
           endcase
       end              
 endmodule
-
-
