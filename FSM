@@ -21,7 +21,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime); 
-    input  reset_n, go, prime, done, clk, rco,; 
+    input  reset_n, go, prime, done, clk, rco; 
     output reg we, start, up, upb, clr;
      
     //- next state & present state variables
@@ -78,7 +78,7 @@ module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime)
                  if ((done == 1) && (prime == 1)) begin
                     NS = st_D; 
                  end else if ((done == 1) && (prime == 0)) begin
-                    NS = st_E
+                    NS = st_E;
                  end else begin
                     NS = st_C; 
                  end  
@@ -89,7 +89,7 @@ module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime)
                  // Moore Outputs
                  we = 1; up = 1; upb = 1; start = 0;  
                  // State Transition
-                 if (RCO == 1) begin 
+                 if (rco == 1) begin 
                    NS = st_A; 
                  end else begin
                    NS = st_B; 
@@ -101,7 +101,7 @@ module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime)
                  // Moore Outputs
                  we = 0; up = 1; upb = 0; start = 0;  
                  // State Transition
-                 if (RCO == 1) begin 
+                 if (rco == 1) begin 
                    NS = st_A; 
                  end else begin
                    NS = st_B; 
