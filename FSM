@@ -23,7 +23,95 @@
 module fsm_template(reset_n, clk, start, we, up, upb, rco, go, clr, done, prime); 
     input  reset_n, go, prime, done, clk, rco; 
     output reg we, start, up, upb, clr;
-     
+    
+    // Variables to connect modules
+    wire romdA;
+    wire romdB;
+    wire addrROM;
+    wire addrRAM;
+    wire gten;
+    wire counterA;
+    wire counterB;
+    wire muxdo;
+    wire sclk;
+
+   // Instantiation Modules
+   // NOTE: ALL PARAMETERS HAVE NOT BEEN FIXED YET
+   // NEED TO SET WHICH ONES ARE SLOW CLK
+
+   clk_2n_div_test #(.n(25)) my_DIV (
+      .clockin   (clk), 
+      .fclk_only (1),          
+      .clockout  (sclk)   );
+
+   cntr_up_clr_nb #(.n(16)) my_CNTRa (
+      .clk   (xxxx), 
+      .clr   (clr), 
+      .up    (up), 
+      .ld    (), 
+      .D     (), 
+      .count (counterA), 
+      .rco   (rco)   ); 
+
+   cntr_up_clr_nb #(.n(16)) my_CNTRb (
+      .clk   (xxxx), 
+      .clr   (clr), 
+      .up    (upb), 
+      .ld    (), 
+      .D     (), 
+      .count (counterB), 
+      .rco   ()   );
+
+   ROM_16x32_exp1Na my_ROMa (
+      .addr  (counterA),  
+      .data  (romdA),  
+      .rd_en (1)    );
+
+   ROM_16x32_exp1Nb my_ROMb (
+      .addr  (counterA),  
+      .data  (romdB),  
+      .rd_en (1)    );
+
+   comp_nb #(.n(16)) my_COMP (
+      .a  (romdA), 
+      .b  (romdB), 
+      .eq (), 
+      .gt (gten), 
+      .lt ()     );
+
+   mux_2t1_nb  #(.n(4)) my_2t1_mux  (
+      .SEL   (gten), 
+      .D0    (romdA), 
+      .D1    (romdB), 
+      .D_OUT (muxdo) ); 
+
+   prime_num_check  my_prime (
+      .start (start),
+      .test  (0),
+      .clk   (clk),
+      .num   (muxdo),
+      .DONE  (done),
+      .PRIME (prime)     );          
+
+   ram_single_port #(.n(4),.m(8)) my_ram (
+      .data_in  (muxdo),  // m spec
+      .addr     (counterB),  // n spec 
+      .we       (we),
+      .clk      (clk),
+      .data_out (xxxx)     );  
+
+   univ_sseg my_univ_sseg (
+      .cnt1    (), 
+      .cnt2    (), 
+      .valid   (), 
+      .dp_en   (), 
+      .dp_sel  (), 
+      .mod_sel (), 
+      .sign    (), 
+      .clk     (), 
+      .ssegs   (), 
+      .disp_en ()    );
+
     //- next state & present state variables
     reg [1:0] NS, PS; 
 
