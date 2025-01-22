@@ -20,12 +20,11 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module fsm( reset_n, clk, start, we, up, upb, go, clr, an, ssegs );
+module fsm( reset_n, clk, go, an, ssegs );
     // I/O
     input  reset_n, go, clk; 
     output [7:0] ssegs; 
     output [3:0] an;
-    output reg we, start, up, upb, clr ;
     
     // Variables to connect modules
     wire romdA;
@@ -39,7 +38,12 @@ module fsm( reset_n, clk, start, we, up, upb, go, clr, an, ssegs );
     wire fprime;
     wire fdone;
     wire frco;
-
+    reg we;
+    reg start;
+    reg up;
+    reg upb;
+    reg clr;
+    
    // Instantiation Modules
    clk_2n_div_test #(.n(25)) my_DIV (
       .clockin   (clk), 
