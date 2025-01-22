@@ -1,0 +1,208 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 01/20/2025 10:22:10 AM
+// Design Name: 
+// Module Name: fsm
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module fsm( reset_n, clk, start, we, up, upb, rco, go, clr, done, prime, an, ssegs
+    );
+    
+    input  reset_n, go, prime, done, clk, rco; 
+    output [7:0] ssegs; 
+    output [3:0] an;
+    output reg we, start, up, upb, clr ;
+    
+    // Variables to connect modules
+    wire romdA;
+    wire romdB;
+    wire addrROM;
+    wire addrRAM;
+    wire gten;
+    wire [3:0] counterA;
+    wire [3:0] counterB;
+    wire muxdo;
+    wire sclk;
+    wire [13:0] data;
+
+   // Instantiation Modules
+   // NOTE: ALL PARAMETERS HAVE NOT BEEN FIXED YET
+   // NEED TO SET WHICH ONES ARE SLOW CLK
+
+   clk_2n_div_test #(.n(25)) my_DIV (
+      .clockin   (clk), 
+      .fclk_only (1),          
+      .clockout  (sclk)   );
+
+   cntr_up_clr_nb #(.n(4)) my_CNTRa (
+      .clk   (sclk), 
+      .clr   (clr), 
+      .up    (up), 
+      .ld    (), 
+      .D     (), 
+      .count (counterA), 
+      .rco   (rco)   ); 
+
+   cntr_up_clr_nb #(.n(4)) my_CNTRb (
+      .clk   (sclk), 
+      .clr   (clr), 
+      .up    (upb), 
+      .ld    (), 
+      .D     (), 
+      .count (counterB), 
+      .rco   (rco)   );
+
+   ROM_16x32_exp1Na my_ROMa (
+      .addr  (counterA),  
+      .data  (romdA),  
+      .rd_en (1)    );
+
+   ROM_16x32_exp1Nb my_ROMb (
+      .addr  (counterA),  
+      .data  (romdB),  
+      .rd_en (1)    );
+
+   comp_nb #(.n(16)) my_COMP (
+      .a  (romdA), 
+      .b  (romdB), 
+      .eq (), 
+      .gt (gten), 
+      .lt ()     );
+
+   mux_2t1_nb  #(.n(4)) my_2t1_mux  (
+      .SEL   (gten), 
+      .D0    (romdA), 
+      .D1    (romdB), 
+      .D_OUT (muxdo) ); 
+
+   prime_num_check  my_prime (
+      .start (start),
+      .test  (0),
+      .clk   (clk),
+      .num   (muxdo),
+      .DONE  (done),
+      .PRIME (prime)     );          
+
+   ram_single_port #(.n(4),.m(8)) my_ram (
+      .data_in  (muxdo),  // m spec
+      .addr     (counterB),  // n spec 
+      .we       (we),
+      .clk      (sclk),
+      .data_out (data)     );  
+
+   univ_sseg my_univ_sseg (
+      .cnt1    (data), 
+      .cnt2    (), 
+      .valid   (1), 
+      .dp_en   (an), 
+      .dp_sel  (), 
+      .mod_sel (), 
+      .sign    (), 
+      .clk     (clk), 
+      .ssegs   (ssegs), 
+      .disp_en (1));
+
+    //- next state & present state variables
+    reg [1:0] NS, PS; 
+
+    //- bit-level state representations
+    // st_A: INIT 
+    // st_B: DOIT
+    // st_C: WAIT
+    // st_D: PRIME
+    // st_E: NPRIME
+
+    parameter [1:0] st_A=3'b000, st_B=3'b001, st_C=3'b010, st_D=3'b011, st_E=3'b100;
+    
+
+    //- model the state registers
+    always @ (negedge reset_n, posedge clk)
+       if (reset_n == 0) 
+          PS <= st_A; 
+       else
+          PS <= NS; 
+    
+    
+    //- model the next-state and output decoders
+    always @ (*)
+    begin
+       we = 0; start = 0; up = 0; upb = 0; clr = 0; // assign all outputs to avoid latches
+       case(PS)
+          st_A:   // INIT
+          begin
+            // Moore Outputs
+             we = 0; up = 0; upb = 0; start = 0;      
+            // State Transition
+             if ((go == 1) && (clr == 1)) begin 
+                NS = st_A; 
+             end else begin
+                NS = st_B; 
+             end  
+          end
+          
+          st_B:   // DOIT
+             begin
+                // Moore Outputs
+                we = 0; up = 0; upb = 0; start = 1; 
+                // State Transition    
+                NS = st_C;
+             end   
+             
+          st_C:   // WAIT
+             begin
+                 // Moore Outputs
+                 we = 0; up = 0; upb = 0; start = 0;  
+                 // State Transition  
+                 if ((done == 1) && (prime == 1)) begin
+                    NS = st_D; 
+                 end else if ((done == 1) && (prime == 0)) begin
+                    NS = st_E;
+                 end else begin
+                    NS = st_C; 
+                 end  
+             end
+             
+         st_D:    // PRIME
+            begin
+                 // Moore Outputs
+                 we = 1; up = 1; upb = 1; start = 0;  
+                 // State Transition
+                 if (rco == 1) begin 
+                   NS = st_A; 
+                 end else begin
+                   NS = st_B; 
+                 end  
+            end
+
+         st_E:    // NPRIME
+            begin
+                 // Moore Outputs
+                 we = 0; up = 1; upb = 0; start = 0;  
+                 // State Transition
+                 if (rco == 1) begin 
+                   NS = st_A; 
+                 end else begin
+                   NS = st_B; 
+                 end  
+            end
+             
+             
+          default: NS = st_A; 
+          endcase
+      end              
+endmodule
