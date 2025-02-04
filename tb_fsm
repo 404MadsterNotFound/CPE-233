@@ -1,0 +1,56 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 01/20/2025 10:22:10 AM
+// Design Name: 
+// Module Name: fsm
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module fsm_tb();
+    reg  clk;
+    reg  reset_n, go; 
+    wire [7:0] ssegs; 
+    wire [3:0] an;
+   always begin 
+   #5
+    clk = 1;
+   
+    #5
+    clk = 0;
+    
+    end   
+       
+    fsm UUT (.reset_n(reset_n), .clk(clk), .go(go), .an(an), .ssegs(ssegs));
+    
+    always begin
+    
+    #10
+    reset_n = 0;
+    go=1;
+    
+//    #10
+//    //reset_n = 0;
+//    //go=0;
+//    #10
+//   // reset_n = 1;
+//   // go=1;
+    end
+
+    
+
+    
+endmodule
